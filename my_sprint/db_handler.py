@@ -1,50 +1,43 @@
-import os
 import psycopg2
-from psycopg2.extras import RealDictCursor
-from dotenv import load_dotenv
-
-
-load_dotenv()
 
 class DatabaseHandler:
     def __init__(self):
-        self.connection = psycopg2.connect(
-            dbname=os.getenv('FSTR_DB_NAME'),
-            user=os.getenv('FSTR_DB_USER'),
-            password=os.getenv('FSTR_DB_PASSWORD'),
-            host=os.getenv('FSTR_DB_HOST'),
-            port=os.getenv('FSTR_DB_PORT')
-        )
-        self.cursor = self.connection.cursor(cursor_factory=RealDictCursor)
+        try:
+            self.conn = psycopg2.connect(
+                dbname='sprint', 
+                user='postgres', 
+                password='killer*10', 
+                host='localhost', 
+                port='5432'
+            )
+            self.cursor = self.conn.cursor()
+        except Exception as e:
+            print(f"Error while connecting to the database: {e}")
+            self.conn = None
+            self.cursor = None
 
     def add_pass(self, data):
-        query = """
-        INSERT INTO passes (column1, column2, status) 
-        VALUES (%s, %s, %s)
-        """
-        self.cursor.execute(query, (data['column1'], data['column2'], 'new'))
-        self.connection.commit()
+        if self.conn is None or self.cursor is None:
+            print("Database connection is not established.")
+            return False
 
-    def get_pass(self, pass_id):
-        query = "SELECT * FROM passes WHERE id = %s"
-        self.cursor.execute(query, (pass_id,))
-        return self.cursor.fetchone()
-
-    def update_pass(self, pass_id, data):
-        set_clause = ", ".join(f"{key} = %s" for key in data.keys())
-        query = f"UPDATE passes SET {set_clause} WHERE id = %s AND status = 'new'"
-        self.cursor.execute(query, (*data.values(), pass_id))
-        self.connection.commit()
-        return self.cursor.rowcount
-
-    def get_passes_by_email(self, email):
-        query = """
-        SELECT * FROM passes 
-        WHERE user_email = %s
-        """
-        self.cursor.execute(query, (email,))
-        return self.cursor.fetchall()
-
-    def __del__(self):
-        self.cursor.close()
-        self.connection.close()
+        try:
+            print("Data to insert:", data)  # Отладочный принт
+            query = """
+            INSERT INTO passes (name, latitude, longitude, user_email, additional_info, status)
+            VALUES (%s, %s, %s, %s, %s, 'new')
+            """
+            self.cursor.execute(query, (
+                data['name'], 
+                data['latitude'], 
+                data['longitude'], 
+                data['user_email'], 
+                data['additional_info']
+            ))
+            self.conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error: {e}")
+            if self.conn:
+                self.conn.rollback()
+            return False

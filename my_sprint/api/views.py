@@ -3,16 +3,18 @@ from rest_framework.response import Response
 from rest_framework import status
 from db_handler import DatabaseHandler
 
-class SubmitData(APIView):
-    def post(self, request):
-        data = request.data
-        db_handler = DatabaseHandler()
-        result = db_handler.add_pass(data)
-        if result['success']:
-            return Response(result, status=status.HTTP_201_CREATED)
-        else:
-            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+# Создание объекта db_handler
+db_handler = DatabaseHandler()
 
+class SubmitDataView(APIView):
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        print("Received data:", data)  # Отладочный принт
+        result = db_handler.add_pass(data)
+        if result:
+            return Response({"message": "Pass successfully created"}, status=status.HTTP_201_CREATED)
+        else:
+            return Response({"message": "Failed to create pass"}, status=status.HTTP_400_BAD_REQUEST)
     def get(self, request, pk=None):
         if pk:
             db_handler = DatabaseHandler()
