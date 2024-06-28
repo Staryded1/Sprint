@@ -1,14 +1,39 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from db_handler import DatabaseHandler  # Ensure db_handler.py is in the same directory as manage.py
+from db_handler import DatabaseHandler
 
 class SubmitData(APIView):
     def post(self, request):
         data = request.data
-        db = DatabaseHandler()
-        try:
-            db.add_pass(data)
-            return Response({"message": "Data submitted successfully."}, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        db_handler = DatabaseHandler()
+        result = db_handler.add_pass(data)
+        if result['success']:
+            return Response(result, status=status.HTTP_201_CREATED)
+        else:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request, pk=None):
+        if pk:
+            db_handler = DatabaseHandler()
+            result = db_handler.get_pass(pk)
+            if result:
+                return Response(result, status=status.HTTP_200_OK)
+            else:
+                return Response({"message": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            user_email = request.GET.get('user__email', None)
+            if user_email:
+                db_handler = DatabaseHandler()
+                result = db_handler.get_passes_by_email(user_email)
+                return Response(result, status=status.HTTP_200_OK)
+            return Response({"message": "Email not provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, pk):
+        data = request.data
+        db_handler = DatabaseHandler()
+        result = db_handler.update_pass(pk, data)
+        if result['success']:
+            return Response(result, status=status.HTTP_200_OK)
+        else:
+            return Response(result, status=status.HTTP_400_BAD_REQUEST)

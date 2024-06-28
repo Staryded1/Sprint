@@ -3,4 +3,5 @@ from .views import SubmitData
 
 urlpatterns = [
     path('submitData/', SubmitData.as_view(), name='submit-data'),
+    path('submitData/<int:id>/', SubmitData.as_view(), name='get-pass'),
 ]
