@@ -53,3 +53,5 @@ class SubmitDataView(APIView):
             serializer.save()
             return Response({'state': 1, 'message': 'Record updated successfully'})
         return Response({'state': 0, 'message': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+print('Ура я закончил')

@@ -11,6 +11,7 @@ class Coords(models.Model):
     latitude = models.FloatField()
     longitude = models.FloatField()
     height = models.IntegerField()
+    
 
 class PerevalAdded(models.Model):
     beauty_title = models.CharField(max_length=255)
