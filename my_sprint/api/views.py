@@ -1,41 +1,54 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from db_handler import DatabaseHandler
-
-# Создание объекта db_handler
-db_handler = DatabaseHandler()
+from .models import PerevalAdded
+from .serializers import PerevalAddedSerializer
 
 class SubmitDataView(APIView):
-    def post(self, request, *args, **kwargs):
-        data = request.data
-        print("Received data:", data)  # Отладочный принт
-        result = db_handler.add_pass(data)
-        if result:
-            return Response({"message": "Pass successfully created"}, status=status.HTTP_201_CREATED)
-        else:
-            return Response({"message": "Failed to create pass"}, status=status.HTTP_400_BAD_REQUEST)
-    def get(self, request, pk=None):
-        if pk:
-            db_handler = DatabaseHandler()
-            result = db_handler.get_pass(pk)
-            if result:
-                return Response(result, status=status.HTTP_200_OK)
-            else:
-                return Response({"message": "Not found"}, status=status.HTTP_404_NOT_FOUND)
-        else:
-            user_email = request.GET.get('user__email', None)
-            if user_email:
-                db_handler = DatabaseHandler()
-                result = db_handler.get_passes_by_email(user_email)
-                return Response(result, status=status.HTTP_200_OK)
-            return Response({"message": "Email not provided"}, status=status.HTTP_400_BAD_REQUEST)
 
-    def patch(self, request, pk):
-        data = request.data
-        db_handler = DatabaseHandler()
-        result = db_handler.update_pass(pk, data)
-        if result['success']:
-            return Response(result, status=status.HTTP_200_OK)
+    def get(self, request, id=None):
+        if id:
+            try:
+                pereval = PerevalAdded.objects.get(id=id)
+                serializer = PerevalAddedSerializer(pereval)
+                return Response(serializer.data)
+            except PerevalAdded.DoesNotExist:
+                return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         else:
-            return Response(result, status=status.HTTP_400_BAD_REQUEST)
+            email = request.query_params.get('user__email')
+            if email:
+                perevals = PerevalAdded.objects.filter(user__email=email)
+                serializer = PerevalAddedSerializer(perevals, many=True)
+                return Response(serializer.data)
+            return Response({'error': 'Email not provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def post(self, request):
+        serializer = PerevalAddedSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def patch(self, request, id=None):
+        if not id:
+            return Response({'error': 'ID is required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            pereval = PerevalAdded.objects.get(id=id)
+        except PerevalAdded.DoesNotExist:
+            return Response({'error': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if pereval.status != 'new':
+            return Response({'state': 0, 'message': 'Cannot update record that is not in new status'}, status=status.HTTP_400_BAD_REQUEST)
+
+        data = request.data
+        restricted_fields = ['user', 'user__email', 'user__fam', 'user__name', 'user__otc', 'user__phone']
+        for field in restricted_fields:
+            if field in data:
+                data.pop(field)
+
+        serializer = PerevalAddedSerializer(pereval, data=data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'state': 1, 'message': 'Record updated successfully'})
+        return Response({'state': 0, 'message': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
